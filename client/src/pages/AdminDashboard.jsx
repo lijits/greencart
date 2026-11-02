@@ -1,214 +1,270 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './AdminDashboard.css';
+import React, { useState } from 'react';
 
 const AdminDashboard = () => {
-  const [products, setProducts] = useState([]);
+  // Sample initial state for inventory items
+  const [products, setProducts] = useState([
+    {
+      id: 1,
+      name: 'Organic Bamboo Toothbrush',
+      category: 'Personal Care',
+      price: 299,
+      ecoScore: 'A (Highest Sustainability)',
+      description: 'Biodegradable handle with soft bristles.',
+      image: 'https://images.unsplash.com/photo-1607613009820-a29f7bb81c04'
+    }
+  ]);
+
+  // State for form inputs
   const [formData, setFormData] = useState({
     name: '',
-    price: '',
     category: 'Personal Care',
-    imageUrl: '',
-    ecoRating: 8,
-    description: ''
+    price: '',
+    ecoScore: 'A (Highest Sustainability)',
+    description: '',
+    image: ''
   });
 
-  // Fetch products from backend on load
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // Tracks if user is editing an item (null = creating new item)
+  const [editingId, setEditingId] = useState(null);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await axios.get('http://localhost:5000/api/products');
-      setProducts(res.data);
-    } catch (err) {
-      console.error('Error fetching products:', err);
-    }
-  };
-
+  // Form input handler
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add product to MongoDB via API with Authorization token
-  const handleAddProduct = async (e) => {
+  // Submit handler for both Create and Update
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.price) return;
 
-    try {
-      // Retrieve stored token from login session
-      const token = localStorage.getItem('token');
-
-      const res = await axios.post(
-        'http://localhost:5000/api/products',
-        {
-          ...formData,
-          price: parseFloat(formData.price)
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+    if (editingId !== null) {
+      // Update existing item
+      setProducts(
+        products.map((p) =>
+          p.id === editingId ? { ...formData, id: editingId, price: Number(formData.price) } : p
+        )
       );
-      
-      setProducts([...products, res.data]);
-      setFormData({
-        name: '',
-        price: '',
-        category: 'Personal Care',
-        imageUrl: '',
-        ecoRating: 8,
-        description: ''
-      });
-      alert('Product added successfully!');
-    } catch (err) {
-      console.error('Error adding product:', err);
-      alert('Failed to add product: ' + (err.response?.data?.message || err.message));
+      setEditingId(null);
+    } else {
+      // Add new item
+      const newProduct = {
+        ...formData,
+        id: Date.now(),
+        price: Number(formData.price)
+      };
+      setProducts([...products, newProduct]);
+    }
+
+    // Reset form fields
+    resetForm();
+  };
+
+  // Populate form with existing product details for editing
+  const handleEdit = (product) => {
+    setEditingId(product.id);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      ecoScore: product.ecoScore,
+      description: product.description,
+      image: product.image
+    });
+  };
+
+  // Delete product handler
+  const handleDelete = (productId) => {
+    try {
+      setProducts(products.filter(p => p.id !== productId));
+    } catch (error) {
+      console.error("Failed to delete product:", error);
     }
   };
 
-  // Delete product from MongoDB via API
-  const handleDelete = async (id) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/products/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setProducts(products.filter((product) => product._id !== id));
-    } catch (err) {
-      console.error('Error deleting product:', err);
-      alert('Failed to delete product');
-    }
+  // Clear form
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'Personal Care',
+      price: '',
+      ecoScore: 'A (Highest Sustainability)',
+      description: '',
+      image: ''
+    });
   };
 
   return (
-    <div className="admin-container">
-      <div className="admin-wrapper">
-        
-        <div className="admin-header">
-          <h1>GreenCart Control Panel</h1>
-          <p>Manage eco-friendly store inventory and add new products.</p>
-        </div>
+    <div className="max-w-4xl mx-auto p-6 font-sans">
+      <h1 className="text-2xl font-bold text-teal-800 mb-1">⚙️ Admin Dashboard</h1>
+      <p className="text-gray-500 mb-6">Manage inventory and list new sustainable products to GreenCart.</p>
 
-        {/* Add Product Form */}
-        <div className="admin-card">
-          <h2 className="card-title">Add Eco-Friendly Product</h2>
-          <form onSubmit={handleAddProduct}>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Product Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="e.g. Bamboo Fiber Coffee Cup"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+      {/* FORM SECTION */}
+      <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+        <h2 className="text-lg font-bold mb-4">
+          {editingId !== null ? 'Edit Eco Product' : 'Add New Eco Product'}
+        </h2>
 
-              <div className="form-group">
-                <label>Price ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="price"
-                  placeholder="0.00"
-                  value={formData.price}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Category</label>
-                <select name="category" value={formData.category} onChange={handleChange}>
-                  <option value="Personal Care">Personal Care</option>
-                  <option value="Kitchen">Kitchen</option>
-                  <option value="Lifestyle">Lifestyle</option>
-                  <option value="Home & Living">Home & Living</option>
-                </select>
-              </div>
-
-              <div className="form-group span-2">
-                <label>Image URL</label>
-                <input
-                  type="text"
-                  name="imageUrl"
-                  placeholder="https://example.com/image.jpg"
-                  value={formData.imageUrl}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Eco Rating (Score / 10)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  name="ecoRating"
-                  value={formData.ecoRating}
-                  onChange={handleChange}
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">Product Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="e.g. Organic Cotton T-Shirt"
+                required
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
-
-            <div className="form-actions">
-              <button type="submit" className="btn-submit">
-                🌱 Add Product
-              </button>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">Category</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="Personal Care">Personal Care</option>
+                <option value="Lifestyle & Kitchen">Lifestyle & Kitchen</option>
+                <option value="Everyday Essentials">Everyday Essentials</option>
+              </select>
             </div>
-          </form>
-        </div>
-
-        {/* Inventory Table */}
-        <div className="admin-card">
-          <div className="table-header">
-            <h2 className="card-title">Inventory Management</h2>
-            <span className="badge-count">{products.length} Products</span>
           </div>
 
-          <div className="table-responsive">
-            <table className="admin-table">
-              <thead>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">Price (₹)</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="e.g. 499"
+                required
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">Eco Score</label>
+              <select
+                name="ecoScore"
+                value={formData.ecoScore}
+                onChange={handleChange}
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="A (Highest Sustainability)">A (Highest Sustainability)</option>
+                <option value="B (Moderate Sustainability)">B (Moderate Sustainability)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700">Description</label>
+            <input
+              type="text"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Short description of eco benefits"
+              required
+              className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700">Image URL (Unsplash)</label>
+            <input
+              type="url"
+              name="image"
+              value={formData.image}
+              onChange={handleChange}
+              placeholder="https://images.unsplash.com/..."
+              required
+              className="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-md transition duration-200"
+            >
+              {editingId !== null ? 'Update Product' : 'Add Product to Catalog'}
+            </button>
+            {editingId !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setEditingId(null);
+                }}
+                className="bg-slate-500 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-md transition duration-200"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* TABLE SECTION (Displays Current Inventory with Edit & Delete buttons) */}
+      <div className="mt-8">
+        <h2 className="text-lg font-bold mb-3">Current Inventory ({products.length})</h2>
+        {products.length === 0 ? (
+          <p className="text-slate-400">No products available in inventory.</p>
+        ) : (
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left border-collapse bg-white text-sm">
+              <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
                 <tr>
-                  <th>Product Name</th>
-                  <th>Price</th>
-                  <th>Category</th>
-                  <th>Eco Rating</th>
-                  <th className="text-right">Actions</th>
+                  <th className="p-3">Item</th>
+                  <th className="p-3">Category</th>
+                  <th className="p-3">Price</th>
+                  <th className="p-3">Eco Score</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="empty-text">No products found in inventory.</td>
+              <tbody className="divide-y divide-slate-100">
+                {products.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="p-3 flex items-center gap-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-10 h-10 rounded object-cover border border-slate-200"
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-800">{item.name}</div>
+                        <div className="text-xs text-slate-500">{item.description}</div>
+                      </div>
+                    </td>
+                    <td className="p-3 text-slate-600">{item.category}</td>
+                    <td className="p-3 font-medium text-slate-800">₹{item.price}</td>
+                    <td className="p-3 text-slate-600">{item.ecoScore}</td>
+                    <td className="p-3">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="mr-2 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs transition duration-150"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-xs transition duration-150"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
-                ) : (
-                  products.map((prod) => (
-                    <tr key={prod._id}>
-                      <td className="font-semibold">{prod.name}</td>
-                      <td className="price-text">${typeof prod.price === 'number' ? prod.price.toFixed(2) : prod.price}</td>
-                      <td><span className="badge-category">{prod.category}</span></td>
-                      <td><span className="badge-eco">🌱 {prod.ecoRating}/10</span></td>
-                      <td className="text-right">
-                        <button onClick={() => handleDelete(prod._id)} className="btn-delete">
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
-
+        )}
       </div>
     </div>
   );
