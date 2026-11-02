@@ -1,0 +1,872 @@
+import React, { useState, useEffect } from 'react';
+
+// Initial products categorized into sections
+const initialProductsData = [
+  {
+    category: 'Personal Care',
+    items: [
+      {
+        id: 1,
+        name: 'Bamboo Toothbrush (4-Pack)',
+        description: '100% biodegradable organic bamboo handle with BPA-free bristles.',
+        price: 299,
+        ecoScore: 'A',
+        image: 'https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?auto=format&fit=crop&w=500&q=80',
+      },
+    ],
+  },
+  {
+    category: 'Hydration & Drinkware',
+    items: [
+      {
+        id: 2,
+        name: 'Reusable Stainless Steel Water Bottle',
+        description: 'Double-wall vacuum insulated water bottle, keeps drinks cold for 24 hours.',
+        price: 799,
+        ecoScore: 'A',
+        image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=500&q=80',
+      },
+      {
+        id: 4,
+        name: 'Bamboo Fiber Coffee Cup',
+        description: 'Reusable coffee cup made from eco-friendly bamboo fiber.',
+        price: 399,
+        ecoScore: 'A',
+        image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=500&q=80',
+      },
+    ],
+  },
+  {
+    category: 'Bags & Accessories',
+    items: [
+      {
+        id: 3,
+        name: 'Organic Cotton Shopping Bag',
+        description: 'Heavy duty washable canvas tote bag for grocery shopping.',
+        price: 199,
+        ecoScore: 'B',
+        image: 'https://images.unsplash.com/photo-1597484661643-2f5fef640dd1?auto=format&fit=crop&w=500&q=80',
+      },
+    ],
+  },
+];
+
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Registration States
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  
+  // Navigation pages: 'shop', 'cart', 'checkout', 'orders', 'profile', 'admin', 'order-success'
+  const [currentPage, setCurrentPage] = useState('shop'); 
+
+  // Load products from localStorage with persistence fallback
+  const [productsData, setProductsData] = useState(() => {
+    const savedProducts = localStorage.getItem('greencart_products');
+    return savedProducts ? JSON.parse(savedProducts) : initialProductsData;
+  });
+
+  // Load cart from localStorage
+  const [cart, setCart] = useState(() => {
+    const savedCart = localStorage.getItem('greencart_cart');
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
+
+  // Load orders history from localStorage
+  const [orders, setOrders] = useState(() => {
+    const savedOrders = localStorage.getItem('greencart_orders');
+    return savedOrders ? JSON.parse(savedOrders) : [];
+  });
+
+  const [user, setUser] = useState({ name: '' });
+  
+  // Shipping details state for checkout form
+  const [shippingDetails, setShippingDetails] = useState({
+    fullName: '',
+    address: '',
+    city: '',
+    phone: '',
+    paymentMethod: 'Credit Card',
+  });
+
+  const [finalOrderSummary, setFinalOrderSummary] = useState({ items: [], total: 0 });
+
+  // New Product Form State for Admin
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState('Personal Care');
+  const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductEco, setNewProductEco] = useState('A');
+  const [newProductImage, setNewProductImage] = useState('');
+
+  // Synchronize state changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('greencart_products', JSON.stringify(productsData));
+  }, [productsData]);
+
+  useEffect(() => {
+    localStorage.setItem('greencart_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('greencart_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  // Handle Login action
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!usernameInput.trim() || !passwordInput.trim()) return;
+
+    const lowerUser = usernameInput.toLowerCase();
+    const adminStatus = lowerUser.includes('admin') || lowerUser.includes('boss');
+
+    setUser({ name: usernameInput });
+    setShippingDetails((prev) => ({ ...prev, fullName: usernameInput }));
+    setIsAdmin(adminStatus);
+    setIsLoggedIn(true);
+  };
+
+  // Handle Register action
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (!registerEmail.trim() || !registerPassword.trim() || !registerName.trim()) return;
+
+    const existingUsers = JSON.parse(localStorage.getItem('greencart_users') || '[]');
+    const newUser = { name: registerName, email: registerEmail, password: registerPassword };
+    
+    localStorage.setItem('greencart_users', JSON.stringify([...existingUsers, newUser]));
+
+    const lowerUser = registerEmail.toLowerCase();
+    const adminStatus = lowerUser.includes('admin') || lowerUser.includes('boss');
+
+    setUser({ name: registerName });
+    setShippingDetails((prev) => ({ ...prev, fullName: registerName }));
+    setIsAdmin(adminStatus);
+    setIsLoggedIn(true);
+    alert('Registration successful! Welcome to GreenCart.');
+  };
+
+  // Handle Logout action
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    setUsernameInput('');
+    setPasswordInput('');
+    setCurrentPage('shop');
+  };
+
+  // Add item to cart
+  const addToCart = (product) => {
+    setCart((prevCart) => {
+      const existing = prevCart.find((item) => item.id === product.id);
+      if (existing) {
+        return prevCart.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prevCart, { ...product, quantity: 1 }];
+    });
+    alert('Product added to cart successfully!');
+  };
+
+  // Update quantity (- or +)
+  const updateQuantity = (id, delta) => {
+    setCart((prevCart) =>
+      prevCart
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean)
+    );
+  };
+
+  // Remove item completely from cart
+  const removeFromCart = (id) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  // Add Product (Admin function)
+  const handleAddProduct = (e) => {
+    e.preventDefault();
+    if (!newProductName || !newProductPrice) return;
+
+    const newProduct = {
+      id: Date.now(),
+      name: newProductName,
+      description: newProductDesc || 'Eco-friendly sustainable product.',
+      price: parseFloat(newProductPrice),
+      ecoScore: newProductEco,
+      image: newProductImage || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=500&q=80',
+    };
+
+    setProductsData((prevData) => {
+      const categoryExists = prevData.find((sec) => sec.category === newProductCategory);
+      if (categoryExists) {
+        return prevData.map((sec) =>
+          sec.category === newProductCategory
+            ? { ...sec, items: [...sec.items, newProduct] }
+            : sec
+        );
+      } else {
+        return [...prevData, { category: newProductCategory, items: [newProduct] }];
+      }
+    });
+
+    setNewProductName('');
+    setNewProductDesc('');
+    setNewProductPrice('');
+    setNewProductImage('');
+    alert('Product added successfully to database and localStorage!');
+  };
+
+  // Total count of items in cart
+  const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Total cart price
+  const totalPrice = cart
+    .reduce((sum, item) => sum + item.price * item.quantity, 0)
+    .toFixed(2);
+
+  // Handle final order confirmation from Checkout page
+  const handlePlaceOrder = (e) => {
+    e.preventDefault();
+    if (cart.length === 0) return;
+
+    const newOrder = {
+      id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+      date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: new Date().toISOString(),
+      customerName: shippingDetails.fullName,
+      address: shippingDetails.address + ', ' + shippingDetails.city,
+      phone: shippingDetails.phone,
+      paymentMethod: shippingDetails.paymentMethod,
+      items: [...cart],
+      total: totalPrice,
+      status: 'Processing',
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    setFinalOrderSummary({ items: [...cart], total: totalPrice });
+    setCart([]);
+    setCurrentPage('order-success');
+  };
+
+  // If user is logged out, show Login or Register Screen
+  if (!isLoggedIn) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f9fafb', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+        <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '8px', border: '1px solid #e5e7eb', width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '28px' }}>🌱</span>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#064e3b', margin: 0 }}>GreenCart</h1>
+          </div>
+          
+          <h2 style={{ fontSize: '20px', marginBottom: '20px', color: '#374151', textAlign: 'center' }}>
+            {isRegistering ? 'Create Account' : 'Welcome Back'}
+          </h2>
+          
+          {!isRegistering ? (
+            /* LOGIN FORM */
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Username or Email</label>
+                <input
+                  type="text"
+                  placeholder="e.g. admin or mini@gmail.com"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', marginTop: '5px' }}
+              >
+                Login
+              </button>
+            </form>
+          ) : (
+            /* REGISTER FORM */
+            <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Liji T.S."
+                  value={registerName}
+                  onChange={(e) => setRegisterName(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Email Address</label>
+                <input
+                  type="email"
+                  placeholder="e.g. user@gmail.com"
+                  value={registerEmail}
+                  onChange={(e) => setRegisterEmail(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Password</label>
+                <input
+                  type="password"
+                  placeholder="Create a password"
+                  value={registerPassword}
+                  onChange={(e) => setRegisterPassword(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', marginTop: '5px' }}
+              >
+                Register & Sign Up
+              </button>
+            </form>
+          )}
+
+          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setIsRegistering(!isRegistering)}
+              style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', textDecoration: 'underline' }}
+            >
+              {isRegistering ? 'Already have an account? Login here' : "Don't have an account? Register here"}
+            </button>
+          </div>
+
+          <div style={{ marginTop: '20px', textAlign: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '15px' }}>
+            <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.4', margin: 0 }}>
+              Tip: Use username containing <strong>admin</strong> to test seller/admin features!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f9fafb', minHeight: '100vh', paddingBottom: '40px' }}>
+      {/* Header Navigation */}
+      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '15px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '24px' }}>🌱</span>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#064e3b', margin: 0 }}>GreenCart</h1>
+        </div>
+
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+          <button
+            onClick={() => setCurrentPage('shop')}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#4b5563', fontWeight: currentPage === 'shop' ? 'bold' : 'normal', textDecoration: currentPage === 'shop' ? 'underline' : 'none' }}
+          >
+            Shop
+          </button>
+          
+          <button
+            onClick={() => setCurrentPage('cart')}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#4b5563', fontWeight: currentPage === 'cart' ? 'bold' : 'normal', textDecoration: currentPage === 'cart' ? 'underline' : 'none' }}
+          >
+            🛒 Cart ({totalItemsCount})
+          </button>
+
+          <button
+            onClick={() => setCurrentPage('orders')}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#4b5563', fontWeight: currentPage === 'orders' ? 'bold' : 'normal', textDecoration: currentPage === 'orders' ? 'underline' : 'none' }}
+          >
+            📦 My Orders
+          </button>
+
+          <button
+            onClick={() => setCurrentPage('profile')}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#4b5563', fontWeight: currentPage === 'profile' ? 'bold' : 'normal', textDecoration: currentPage === 'profile' ? 'underline' : 'none' }}
+          >
+            👤 Profile
+          </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => setCurrentPage('admin')}
+              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#059669', fontWeight: currentPage === 'admin' ? 'bold' : 'normal', textDecoration: currentPage === 'admin' ? 'underline' : 'none' }}
+            >
+              ⚙️ Admin Dashboard
+            </button>
+          )}
+
+          <span style={{ color: '#374151', fontSize: '14px' }}>Hello, {user.name}</span>
+          <button
+            onClick={handleLogout}
+            style={{ backgroundColor: '#fca5a5', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', color: '#991b1b', fontWeight: 'bold' }}
+          >
+            Logout
+          </button>
+        </nav>
+      </header>
+
+      {/* Main Container */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+
+        {/* SHOP PAGE */}
+        {currentPage === 'shop' && (
+          <div>
+            <div style={{ marginBottom: '35px' }}>
+              <h2 style={{ fontSize: '30px', fontWeight: 'bold', color: '#111827' }}>Sustainable Shopping for a Greener Planet</h2>
+              <p style={{ color: '#6b7280', marginTop: '6px' }}>Discover eco-friendly alternatives, track your plastic savings, and earn Green Points!</p>
+            </div>
+
+            {productsData.map((section, idx) => (
+              <div key={idx} style={{ marginBottom: '40px' }}>
+                <div style={{ borderBottom: '2px solid #059669', paddingBottom: '8px', marginBottom: '20px' }}>
+                  <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#064e3b', margin: 0 }}>
+                    {section.category}
+                  </h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '24px' }}>
+                  {section.items.map((product) => (
+                    <div
+                      key={product.id}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: '#059669', color: '#ffffff', fontSize: '12px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', zIndex: 1 }}>
+                            ECO SCORE: {product.ecoScore}
+                          </span>
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                          />
+                        </div>
+                        <div style={{ padding: '16px' }}>
+                          <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#111827', marginTop: 0 }}>{product.name}</h4>
+                          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.4' }}>{product.description}</p>
+                          <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#059669', margin: 0 }}>₹{product.price}</p>
+                        </div>
+                      </div>
+                      <div style={{ padding: '16px', paddingTop: '0' }}>
+                        <button
+                          onClick={() => addToCart(product)}
+                          style={{ width: '100%', backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CART PAGE */}
+        {currentPage === 'cart' && (
+          <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', color: '#111827' }}>Shopping Cart</h2>
+
+            {cart.length === 0 ? (
+              <p style={{ color: '#6b7280' }}>
+                Your cart is empty.{' '}
+                <button onClick={() => setCurrentPage('shop')} style={{ color: '#059669', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Go shopping
+                </button>
+              </p>
+            ) : (
+              <div>
+                {cart.map((item) => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e5e7eb', padding: '16px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <img src={item.image} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                      <div>
+                        <h4 style={{ fontWeight: 'bold', fontSize: '16px', margin: 0, color: '#111827' }}>{item.name}</h4>
+                        <p style={{ color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>₹{item.price}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 8px' }}>
+                        <button onClick={() => updateQuantity(item.id, -1)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>-</button>
+                        <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>+</button>
+                      </div>
+
+                      <button onClick={() => removeFromCart(item.id)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px' }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <div style={{ marginTop: '30px', textAlign: 'right' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111827' }}>
+                    Total: ₹{totalPrice}
+                  </h3>
+                  <button
+                    onClick={() => setCurrentPage('checkout')}
+                    style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px 24px', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}
+                  >
+                    Proceed to Checkout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CHECKOUT PAGE */}
+        {currentPage === 'checkout' && (
+          <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '20px', color: '#064e3b' }}>📦 Checkout & Shipping Details</h2>
+            
+            <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Full Name</label>
+                  <input
+                    type="text"
+                    value={shippingDetails.fullName}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, fullName: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 9876543210"
+                    value={shippingDetails.phone}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, phone: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Delivery Address</label>
+                <input
+                  type="text"
+                  placeholder="Street address, apartment, suite"
+                  value={shippingDetails.address}
+                  onChange={(e) => setShippingDetails({ ...shippingDetails, address: e.target.value })}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>City</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Trivandrum"
+                    value={shippingDetails.city}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, city: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Payment Method</label>
+                  <select
+                    value={shippingDetails.paymentMethod}
+                    onChange={(e) => setShippingDetails({ ...shippingDetails, paymentMethod: e.target.value })}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box', backgroundColor: '#fff' }}
+                  >
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="UPI / Google Pay">UPI / Google Pay</option>
+                    <option value="Cash on Delivery">Cash on Delivery (COD)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f3f4f6', padding: '15px', borderRadius: '6px', marginTop: '10px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Order Summary</h4>
+                <p style={{ margin: '0 0 5px 0', color: '#4b5563' }}>Total Items: {totalItemsCount}</p>
+                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '18px', color: '#059669' }}>Total Amount: ₹{totalPrice}</p>
+              </div>
+
+              <button
+                type="submit"
+                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '14px', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                Place Order Now
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ORDER SUCCESS PAGE */}
+        {currentPage === 'order-success' && (
+          <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#ffffff', padding: '40px', borderRadius: '8px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+            <span style={{ fontSize: '48px' }}>🎉</span>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#064e3b', margin: '15px 0 10px 0' }}>Order Placed Successfully!</h2>
+            <p style={{ color: '#6b7280', marginBottom: '25px' }}>Thank you for shopping sustainably with GreenCart. Your order has been registered.</p>
+            
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setCurrentPage('orders')}
+                style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                View My Orders
+              </button>
+              <button
+                onClick={() => setCurrentPage('shop')}
+                style={{ backgroundColor: '#e5e7eb', color: '#374151', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PROFILE PAGE */}
+        {currentPage === 'profile' && (
+          <div style={{ maxWidth: '700px', margin: '0 auto', backgroundColor: '#ffffff', padding: '35px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '20px', marginBottom: '25px' }}>
+              <div style={{ width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: 'bold' }}>
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h2 style={{ fontSize: '26px', fontWeight: 'bold', color: '#111827', margin: 0 }}>{user.name}</h2>
+                <p style={{ color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0', fontSize: '15px' }}>
+                  {isAdmin ? '🛡️ Administrator Account' : '🌱 Customer Account'}
+                </p>
+              </div>
+            </div>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151', marginBottom: '15px' }}>Account Information</h3>
+            <div style={{ backgroundColor: '#f9fafb', padding: '20px', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#6b7280' }}>Username / Email:</span>
+                <span style={{ fontWeight: 'bold', color: '#111827' }}>{user.name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#6b7280' }}>Account Role:</span>
+                <span style={{ fontWeight: 'bold', color: '#111827' }}>{isAdmin ? 'Admin (Full Access)' : 'Standard Shopper'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#6b7280' }}>Total Orders Placed:</span>
+                <span style={{ fontWeight: 'bold', color: '#111827' }}>{orders.length}</span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
+              <button
+                onClick={() => setCurrentPage('orders')}
+                style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                View My Orders
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MY ORDERS PAGE */}
+        {currentPage === 'orders' && (
+          <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '10px', color: '#064e3b' }}>📦 My Order History & Tracking</h2>
+            <p style={{ color: '#6b7280', marginBottom: '30px' }}>Track your active eco-friendly deliveries and past purchases.</p>
+
+            {orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
+                <p style={{ fontSize: '18px' }}>You haven't placed any orders yet.</p>
+                <button
+                  onClick={() => setCurrentPage('shop')}
+                  style={{ marginTop: '15px', backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Start Shopping
+                </button>
+              </div>
+            ) : (
+              orders.map((order) => {
+                let statusBg = '#fef3c7'; 
+                let statusColor = '#d97706';
+                if (order.status === 'Shipped') { statusBg = '#dbeafe'; statusColor = '#1d4ed8'; }
+                if (order.status === 'Out for Delivery') { statusBg = '#fae8ff'; statusColor = '#a855f7'; }
+                if (order.status === 'Delivered') { statusBg = '#d1fae5'; statusColor = '#065f46'; }
+
+                return (
+                  <div key={order.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px', backgroundColor: '#fafafa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <span style={{ fontWeight: 'bold', color: '#111827', fontSize: '16px' }}>{order.id}</span>
+                        <span style={{ color: '#6b7280', fontSize: '14px', marginLeft: '15px' }}>{order.date}</span>
+                      </div>
+                      <span style={{ backgroundColor: statusBg, color: statusColor, padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
+                        {order.status}
+                      </span>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#4b5563' }}><strong>Deliver to:</strong> {order.customerName} ({order.phone}) - {order.address}</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}><strong>Payment:</strong> {order.paymentMethod}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {order.items.map((it, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#374151' }}>
+                          <span>{it.name} × {it.quantity}</span>
+                          <span>₹{it.price * it.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '12px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                      <span>Total Amount</span>
+                      <span style={{ color: '#059669' }}>₹{order.total}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* ADMIN PAGE */}
+        {currentPage === 'admin' && isAdmin && (
+          <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '10px', color: '#064e3b' }}>⚙️ Admin Dashboard</h2>
+            <p style={{ color: '#6b7280', marginBottom: '30px' }}>Manage inventory and list new sustainable products to GreenCart.</p>
+
+            <form onSubmit={handleAddProduct} style={{ backgroundColor: '#f9fafb', padding: '20px', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Add New Eco Product</h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Product Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Organic Cotton T-Shirt"
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Category</label>
+                  <select
+                    value={newProductCategory}
+                    onChange={(e) => setNewProductCategory(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box', backgroundColor: '#fff' }}
+                  >
+                    <option value="Personal Care">Personal Care</option>
+                    <option value="Hydration & Drinkware">Hydration & Drinkware</option>
+                    <option value="Bags & Accessories">Bags & Accessories</option>
+                    <option value="Home & Kitchen">Home & Kitchen</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Price (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 499"
+                    value={newProductPrice}
+                    onChange={(e) => setNewProductPrice(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Eco Score</label>
+                  <select
+                    value={newProductEco}
+                    onChange={(e) => setNewProductEco(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box', backgroundColor: '#fff' }}
+                  >
+                    <option value="A">A (Highest Sustainability)</option>
+                    <option value="B">B (Moderate Sustainability)</option>
+                    <option value="C">C (Standard)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Description</label>
+                <input
+                  type="text"
+                  placeholder="Short description of eco benefits"
+                  value={newProductDesc}
+                  onChange={(e) => setNewProductDesc(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Image URL (Unsplash)</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={newProductImage}
+                  onChange={(e) => setNewProductImage(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', marginTop: '10px' }}
+              >
+                Add Product to Catalog
+              </button>
+            </form>
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+}
