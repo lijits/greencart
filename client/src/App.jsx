@@ -119,38 +119,106 @@ export default function App() {
   }, [orders]);
 
   // Handle Login action
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!usernameInput.trim() || !passwordInput.trim()) return;
+  
+const handleLogin = async (e) => {
+  e.preventDefault();
 
-    const lowerUser = usernameInput.toLowerCase();
-    const adminStatus = lowerUser.includes('admin') || lowerUser.includes('boss');
+  if (!usernameInput.trim() || !passwordInput.trim()) {
+    return;
+  }
 
-    setUser({ name: usernameInput });
-    setShippingDetails((prev) => ({ ...prev, fullName: usernameInput }));
+  try {
+    const response = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+  email: usernameInput.trim().toLowerCase(),
+  password: passwordInput
+})
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || 'Login failed.');
+      return;
+    }
+
+    // Save the backend token
+    localStorage.setItem('token', data.token);
+
+    // Only the authorized admin gets admin access
+    const adminStatus =
+      data.user.email.toLowerCase() === 'boss@gmail.com' &&
+      data.user.role === 'admin';
+
+    setUser({
+      name: data.user.email,
+      email: data.user.email
+    });
+
+    setShippingDetails((prev) => ({
+      ...prev,
+      fullName: data.user.email
+    }));
+
     setIsAdmin(adminStatus);
     setIsLoggedIn(true);
-  };
+    setCurrentPage('shop');
+
+  } catch (error) {
+    console.error('Login error:', error);
+    alert('Cannot connect to server. Please try again.');
+  }
+};
+
 
   // Handle Register action
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (!registerEmail.trim() || !registerPassword.trim() || !registerName.trim()) return;
+  
+const handleRegister = async (e) => {
+  e.preventDefault();
 
-    const existingUsers = JSON.parse(localStorage.getItem('greencart_users') || '[]');
-    const newUser = { name: registerName, email: registerEmail, password: registerPassword };
-    
-    localStorage.setItem('greencart_users', JSON.stringify([...existingUsers, newUser]));
+  if (!registerEmail.trim() || !registerPassword.trim() || !registerName.trim()) {
+    return;
+  }
 
-    const lowerUser = registerEmail.toLowerCase();
-    const adminStatus = lowerUser.includes('admin') || lowerUser.includes('boss');
+  try {
+    const response = await fetch('http://localhost:5000/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+  name: registerName.trim(),
+  email: registerEmail.trim().toLowerCase(),
+  password: registerPassword
+})
+    });
 
-    setUser({ name: registerName });
-    setShippingDetails((prev) => ({ ...prev, fullName: registerName }));
-    setIsAdmin(adminStatus);
-    setIsLoggedIn(true);
-    alert('Registration successful! Welcome to GreenCart.');
-  };
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || 'Registration failed.');
+      return;
+    }
+
+    alert('Registration successful! Please log in.');
+
+    setUsernameInput(registerEmail.trim().toLowerCase());
+    setPasswordInput('');
+    setRegisterEmail('');
+    setRegisterPassword('');
+    setRegisterName('');
+    setIsRegistering(false);
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    alert('Cannot connect to server.');
+  }
+};
+
 
   // Handle Logout action
   const handleLogout = () => {
@@ -228,6 +296,64 @@ export default function App() {
     setNewProductImage('');
     alert('Product added successfully to database and localStorage!');
   };
+  // Edit Product (Admin function)
+const handleEditProduct = (category, product) => {
+  const updatedName = prompt('Enter product name:', product.name);
+  if (updatedName === null || !updatedName.trim()) return;
+
+  const updatedPrice = prompt('Enter product price:', product.price);
+  if (updatedPrice === null || isNaN(Number(updatedPrice))) return;
+
+  const updatedDescription = prompt(
+    'Enter product description:',
+    product.description
+  );
+  if (updatedDescription === null) return;
+
+  setProductsData((prevData) =>
+    prevData.map((section) =>
+      section.category === category
+        ? {
+            ...section,
+            items: section.items.map((item) =>
+              item.id === product.id
+                ? {
+                    ...item,
+                    name: updatedName.trim(),
+                    price: Number(updatedPrice),
+                    description: updatedDescription,
+                  }
+                : item
+            ),
+          }
+        : section
+    )
+  );
+
+  alert('Product updated successfully!');
+};
+
+// Delete Product (Admin function)
+const handleDeleteProduct = (category, productId) => {
+  if (!window.confirm('Are you sure you want to delete this product?')) {
+    return;
+  }
+
+  setProductsData((prevData) =>
+    prevData
+      .map((section) =>
+        section.category === category
+          ? {
+              ...section,
+              items: section.items.filter((item) => item.id !== productId),
+            }
+          : section
+      )
+      .filter((section) => section.items.length > 0)
+  );
+
+  alert('Product deleted successfully!');
+};
 
   // Total count of items in cart
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -281,13 +407,16 @@ export default function App() {
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Username or Email</label>
                 <input
-                  type="text"
-                  placeholder="e.g. admin or mini@gmail.com"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-                  required
-                />
+  type="text"
+  name="username"          
+  id="username"            
+  placeholder="e.g. admin or mini@gmail.com"
+  value={usernameInput}
+  autoComplete="username"  
+  onChange={(e) => setUsernameInput(e.target.value)}
+  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
+  required
+/>
               </div>
 
               <div>
@@ -296,6 +425,7 @@ export default function App() {
                   type="password"
                   placeholder="Enter your password"
                   value={passwordInput}
+                  autoComplete="current-password"
                   onChange={(e) => setPasswordInput(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
                   required
@@ -342,6 +472,7 @@ export default function App() {
                   type="password"
                   placeholder="Create a password"
                   value={registerPassword}
+                  autoComplete="new-password"
                   onChange={(e) => setRegisterPassword(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
                   required
@@ -679,192 +810,167 @@ export default function App() {
             </div>
 
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151', marginBottom: '15px' }}>Account Information</h3>
-            <div style={{ backgroundColor: '#f9fafb', padding: '20px', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#6b7280' }}>Username / Email:</span>
-                <span style={{ fontWeight: 'bold', color: '#111827' }}>{user.name}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#6b7280' }}>Account Role:</span>
-                <span style={{ fontWeight: 'bold', color: '#111827' }}>{isAdmin ? 'Admin (Full Access)' : 'Standard Shopper'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#6b7280' }}>Total Orders Placed:</span>
-                <span style={{ fontWeight: 'bold', color: '#111827' }}>{orders.length}</span>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
-              <button
-                onClick={() => setCurrentPage('orders')}
-                style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                View My Orders
-              </button>
-              <button
-                onClick={handleLogout}
-                style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Logout
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: '#4b5563' }}>
+              <p style={{ margin: 0 }}><strong>Username / Profile:</strong> {user.name}</p>
+              <p style={{ margin: 0 }}><strong>Role:</strong> {isAdmin ? 'Administrator' : 'Standard Shopper'}</p>
+              <p style={{ margin: 0 }}><strong>Total Orders Placed:</strong> {orders.length}</p>
             </div>
           </div>
         )}
-
         {/* MY ORDERS PAGE */}
-        {currentPage === 'orders' && (
-          <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '10px', color: '#064e3b' }}>📦 My Order History & Tracking</h2>
-            <p style={{ color: '#6b7280', marginBottom: '30px' }}>Track your active eco-friendly deliveries and past purchases.</p>
+{currentPage === 'orders' && (
+  <div style={{
+    backgroundColor: '#ffffff',
+    padding: '30px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb'
+  }}>
+    <h2>📦 My Orders</h2>
 
-            {orders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
-                <p style={{ fontSize: '18px' }}>You haven't placed any orders yet.</p>
-                <button
-                  onClick={() => setCurrentPage('shop')}
-                  style={{ marginTop: '15px', backgroundColor: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  Start Shopping
-                </button>
-              </div>
-            ) : (
-              orders.map((order) => {
-                let statusBg = '#fef3c7'; 
-                let statusColor = '#d97706';
-                if (order.status === 'Shipped') { statusBg = '#dbeafe'; statusColor = '#1d4ed8'; }
-                if (order.status === 'Out for Delivery') { statusBg = '#fae8ff'; statusColor = '#a855f7'; }
-                if (order.status === 'Delivered') { statusBg = '#d1fae5'; statusColor = '#065f46'; }
+    {orders.filter(
+      (order) => !order.customerEmail || order.customerEmail === user.email
+    ).length === 0 ? (
+      <p>You have not placed any orders yet.</p>
+    ) : (
+      orders
+        .filter(
+          (order) => !order.customerEmail || order.customerEmail === user.email
+        )
+        .map((order) => (
+          <div key={order.id} style={{
+            border: '1px solid #d1d5db',
+            padding: '20px',
+            marginBottom: '15px',
+            borderRadius: '8px'
+          }}>
+            <h3>Order ID: {order.id}</h3>
+            <p>Date: {order.date}</p>
+            <p>Status: {order.status}</p>
+            <p>Total: ₹{order.total}</p>
 
-                return (
-                  <div key={order.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px', backgroundColor: '#fafafa' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '12px' }}>
-                      <div>
-                        <span style={{ fontWeight: 'bold', color: '#111827', fontSize: '16px' }}>{order.id}</span>
-                        <span style={{ color: '#6b7280', fontSize: '14px', marginLeft: '15px' }}>{order.date}</span>
-                      </div>
-                      <span style={{ backgroundColor: statusBg, color: statusColor, padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-                        {order.status}
-                      </span>
-                    </div>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#4b5563' }}><strong>Deliver to:</strong> {order.customerName} ({order.phone}) - {order.address}</p>
-                      <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}><strong>Payment:</strong> {order.paymentMethod}</p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {order.items.map((it, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#374151' }}>
-                          <span>{it.name} × {it.quantity}</span>
-                          <span>₹{it.price * it.quantity}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '12px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                      <span>Total Amount</span>
-                      <span style={{ color: '#059669' }}>₹{order.total}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            <h4>Products:</h4>
+            {order.items.map((item) => (
+              <p key={item.id}>
+                {item.name} — Quantity: {item.quantity}
+              </p>
+            ))}
           </div>
-        )}
+        ))
+    )}
+  </div>
+)}
 
-        {/* ADMIN PAGE */}
-        {currentPage === 'admin' && isAdmin && (
-          <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#ffffff', padding: '30px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '10px', color: '#064e3b' }}>⚙️ Admin Dashboard</h2>
-            <p style={{ color: '#6b7280', marginBottom: '30px' }}>Manage inventory and list new sustainable products to GreenCart.</p>
+{/* ADMIN DASHBOARD */}
+{currentPage === 'admin' && isAdmin && (
+  <div style={{
+    backgroundColor: '#ffffff',
+    padding: '30px',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb'
+  }}>
+    <h2>⚙️ Admin Dashboard</h2>
 
-            <form onSubmit={handleAddProduct} style={{ backgroundColor: '#f9fafb', padding: '20px', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Add New Eco Product</h3>
+    <h3>Add New Product</h3>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Product Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Organic Cotton T-Shirt"
-                    value={newProductName}
-                    onChange={(e) => setNewProductName(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Category</label>
-                  <select
-                    value={newProductCategory}
-                    onChange={(e) => setNewProductCategory(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box', backgroundColor: '#fff' }}
-                  >
-                    <option value="Personal Care">Personal Care</option>
-                    <option value="Hydration & Drinkware">Hydration & Drinkware</option>
-                    <option value="Bags & Accessories">Bags & Accessories</option>
-                    <option value="Home & Kitchen">Home & Kitchen</option>
-                  </select>
-                </div>
-              </div>
+    <form onSubmit={handleAddProduct} style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      maxWidth: '500px'
+    }}>
+      <input
+        placeholder="Product Name"
+        value={newProductName}
+        onChange={(e) => setNewProductName(e.target.value)}
+        required
+      />
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Price (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 499"
-                    value={newProductPrice}
-                    onChange={(e) => setNewProductPrice(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Eco Score</label>
-                  <select
-                    value={newProductEco}
-                    onChange={(e) => setNewProductEco(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box', backgroundColor: '#fff' }}
-                  >
-                    <option value="A">A (Highest Sustainability)</option>
-                    <option value="B">B (Moderate Sustainability)</option>
-                    <option value="C">C (Standard)</option>
-                  </select>
-                </div>
-              </div>
+      <select
+        value={newProductCategory}
+        onChange={(e) => setNewProductCategory(e.target.value)}
+      >
+        <option>Personal Care</option>
+        <option>Hydration & Drinkware</option>
+        <option>Bags & Accessories</option>
+        <option>Home & Kitchen</option>
+      </select>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Description</label>
-                <input
-                  type="text"
-                  placeholder="Short description of eco benefits"
-                  value={newProductDesc}
-                  onChange={(e) => setNewProductDesc(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-                />
-              </div>
+      <textarea
+        placeholder="Product Description"
+        value={newProductDesc}
+        onChange={(e) => setNewProductDesc(e.target.value)}
+      />
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>Image URL (Unsplash)</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={newProductImage}
-                  onChange={(e) => setNewProductImage(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-                />
-              </div>
+      <input
+        type="number"
+        placeholder="Price"
+        value={newProductPrice}
+        onChange={(e) => setNewProductPrice(e.target.value)}
+        required
+      />
+
+      <select
+        value={newProductEco}
+        onChange={(e) => setNewProductEco(e.target.value)}
+      >
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+      </select>
+
+      <input
+        placeholder="Product Image URL"
+        value={newProductImage}
+        onChange={(e) => setNewProductImage(e.target.value)}
+      />
+
+      <button type="submit">
+        Add Product
+      </button>
+    </form>
+
+    <hr />
+
+    <h3>Manage Products</h3>
+
+    {productsData.map((section) => (
+      <div key={section.category}>
+        <h4>{section.category}</h4>
+
+        {section.items.map((product) => (
+          <div key={product.id} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '12px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <span>
+              {product.name} — ₹{product.price}
+            </span>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => handleEditProduct(section.category, product)}
+              >
+                Edit
+              </button>
 
               <button
-                type="submit"
-                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', marginTop: '10px' }}
+                type="button"
+                onClick={() => handleDeleteProduct(section.category, product.id)}
               >
-                Add Product to Catalog
+                Delete
               </button>
-            </form>
+            </div>
           </div>
-        )}
+        ))}
+      </div>
+    ))}
+  </div>
+)}
 
       </main>
     </div>

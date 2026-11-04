@@ -15,21 +15,47 @@ router.get('/', async (req, res) => {
 // Add a new product to database (Permanent Persistence)
 router.post('/add', async (req, res) => {
   try {
-    const { title, description, price, category, ecoScore, imageUrl } = req.body;
+    const { name, title, description, price, category, ecoScore, image, imageUrl } = req.body;
 
     const newProduct = new Product({
-      title,
+      name: name || title, // supports both field naming conventions
       description,
       price,
       category,
       ecoScore,
-      imageUrl
+      image: image || imageUrl // supports both field naming conventions
     });
 
     const savedProduct = await newProduct.save();
     res.status(201).json(savedProduct);
   } catch (error) {
-    res.status(400).json({ message: 'Failed to create product', error });
+    res.status(400).json({ message: 'Failed to create product', error: error.message });
+  }
+});
+
+// PUT route to update an existing product by ID
+router.put('/:id', async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedProduct) return res.status(404).json({ message: 'Product not found' });
+    res.json(updatedProduct);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DELETE route to remove a product from inventory
+router.delete('/:id', async (req, res) => {
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    if (!deletedProduct) return res.status(404).json({ message: 'Product not found' });
+    res.json({ message: 'Product deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

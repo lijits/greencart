@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Middleware to verify JWT token
+// Verify JWT token
 const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -17,7 +17,7 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get the authenticated user from MongoDB
+    // Find authenticated user
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
@@ -28,6 +28,7 @@ const protect = async (req, res, next) => {
 
     req.user = user;
     next();
+
   } catch (error) {
     return res.status(401).json({
       message: 'Invalid or expired token.'
@@ -35,14 +36,20 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Middleware to verify admin role
+
+// Only boss@gmail.com can access admin routes
 const admin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+
+  if (
+    req.user &&
+    req.user.email === 'boss@gmail.com' &&
+    req.user.role === 'admin'
+  ) {
     return next();
   }
 
   return res.status(403).json({
-    message: 'Access forbidden: Admin access required.'
+    message: 'Access forbidden. Only authorized admin can access.'
   });
 };
 
