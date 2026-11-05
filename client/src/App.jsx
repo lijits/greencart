@@ -388,125 +388,361 @@ const handleDeleteProduct = (category, productId) => {
   };
 
   // If user is logged out, show Login or Register Screen
+  
+  // Front page for logged-out users
   if (!isLoggedIn) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f9fafb', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-        <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '8px', border: '1px solid #e5e7eb', width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-            <span style={{ fontSize: '28px' }}>🌱</span>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#064e3b', margin: 0 }}>GreenCart</h1>
-          </div>
-          
-          <h2 style={{ fontSize: '20px', marginBottom: '20px', color: '#374151', textAlign: 'center' }}>
-            {isRegistering ? 'Create Account' : 'Welcome Back'}
-          </h2>
-          
-          {!isRegistering ? (
-            /* LOGIN FORM */
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Username or Email</label>
-                <input
-  type="text"
-  name="username"          
-  id="username"            
-  placeholder="e.g. admin or mini@gmail.com"
-  value={usernameInput}
-  autoComplete="username"  
-  onChange={(e) => setUsernameInput(e.target.value)}
-  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-  required
-/>
-              </div>
+      <div style={{
+        fontFamily: 'Arial, sans-serif',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f0fdf4'
+      }}>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  value={passwordInput}
-                  autoComplete="current-password"
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
+        {/* NAVBAR */}
+        <header style={{
+          backgroundColor: '#ffffff',
+          padding: '18px 6%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '15px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.06)'
+        }}>
+          <h1 style={{
+            color: '#064e3b',
+            margin: 0,
+            fontSize: '27px'
+          }}>
+            🌱 GreenCart
+          </h1>
 
-              <button
-                type="submit"
-                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', marginTop: '5px' }}
-              >
-                Login
-              </button>
-            </form>
-          ) : (
-            /* REGISTER FORM */
-            <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Full Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Liji T.S."
-                  value={registerName}
-                  onChange={(e) => setRegisterName(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Email Address</label>
-                <input
-                  type="email"
-                  placeholder="e.g. user@gmail.com"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>Password</label>
-                <input
-                  type="password"
-                  placeholder="Create a password"
-                  value={registerPassword}
-                  autoComplete="new-password"
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '16px', boxSizing: 'border-box' }}
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{ backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', marginTop: '5px' }}
-              >
-                Register & Sign Up
-              </button>
-            </form>
-          )}
-
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <nav style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            flexWrap: 'wrap'
+          }}>
+            <a href="#home" style={{ color: '#064e3b', textDecoration: 'none' }}>Home</a>
+            <a href="#about" style={{ color: '#064e3b', textDecoration: 'none' }}>About</a>
             <button
-              type="button"
-              onClick={() => setIsRegistering(!isRegistering)}
-              style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', textDecoration: 'underline' }}
+              onClick={() => {
+                setIsRegistering(false);
+                document.getElementById('login-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#064e3b',
+                cursor: 'pointer',
+                fontSize: '15px'
+              }}
             >
-              {isRegistering ? 'Already have an account? Login here' : "Don't have an account? Register here"}
+              Login
             </button>
-          </div>
+            <button
+              onClick={() => {
+                setIsRegistering(true);
+                document.getElementById('login-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              style={{
+                backgroundColor: '#059669',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '7px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Register
+            </button>
+          </nav>
+        </header>
 
-          <div style={{ marginTop: '20px', textAlign: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '15px' }}>
-            <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.4', margin: 0 }}>
-              Tip: Use username containing <strong>admin</strong> to test seller/admin features!
+        {/* HERO AND LOGIN FORM */}
+        <main id="home" style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          gap: '45px',
+          padding: '55px 6%'
+        }}>
+
+          {/* LEFT SIDE - WELCOME CONTENT */}
+          <section id="about" style={{
+            flex: '1 1 350px',
+            maxWidth: '550px'
+          }}>
+            <p style={{
+              color: '#059669',
+              fontWeight: 'bold',
+              letterSpacing: '2px'
+            }}>
+              SHOP GREEN. LIVE BETTER.
             </p>
-          </div>
-        </div>
+
+            <h2 style={{
+              fontSize: 'clamp(32px, 5vw, 48px)',
+              color: '#064e3b',
+              lineHeight: '1.2',
+              margin: '15px 0'
+            }}>
+              Sustainable Shopping for a Greener Planet
+            </h2>
+
+            <p style={{
+              color: '#4b5563',
+              fontSize: '17px',
+              lineHeight: '1.8'
+            }}>
+              Discover eco-friendly products and make a positive difference
+              with every purchase. Choose reusable, sustainable and
+              environmentally friendly alternatives.
+            </p>
+
+            <div style={{
+              display: 'flex',
+              gap: '20px',
+              flexWrap: 'wrap',
+              marginTop: '25px'
+            }}>
+              <div>
+                <h3 style={{ color: '#059669', marginBottom: '5px' }}>🌿 Eco-Friendly</h3>
+                <p style={{ color: '#6b7280', margin: 0 }}>Better choices for nature</p>
+              </div>
+              <div>
+                <h3 style={{ color: '#059669', marginBottom: '5px' }}>♻️ Reusable</h3>
+                <p style={{ color: '#6b7280', margin: 0 }}>Reduce plastic waste</p>
+              </div>
+            </div>
+          </section>
+
+          {/* RIGHT SIDE - LOGIN / REGISTER FORM */}
+          <section id="login-section" style={{
+            flex: '1 1 320px',
+            maxWidth: '420px',
+            width: '100%',
+            backgroundColor: '#ffffff',
+            padding: '35px',
+            borderRadius: '16px',
+            boxShadow: '0 12px 35px rgba(0,0,0,0.10)',
+            boxSizing: 'border-box'
+          }}>
+            <h2 style={{
+              color: '#064e3b',
+              textAlign: 'center',
+              marginTop: 0
+            }}>
+              {isRegistering ? 'Create Your Account' : 'Welcome Back!'}
+            </h2>
+
+            <p style={{
+              textAlign: 'center',
+              color: '#6b7280',
+              marginBottom: '25px'
+            }}>
+              {isRegistering
+                ? 'Join GreenCart and shop sustainably.'
+                : 'Login to continue your green shopping journey.'}
+            </p>
+
+            {!isRegistering ? (
+              <form onSubmit={handleLogin} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px'
+              }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '7px', color: '#374151' }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    autoComplete="username"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '7px',
+                      boxSizing: 'border-box',
+                      fontSize: '15px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '7px', color: '#374151' }}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '7px',
+                      boxSizing: 'border-box',
+                      fontSize: '15px'
+                    }}
+                  />
+                </div>
+
+                <button type="submit" style={{
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  padding: '13px',
+                  borderRadius: '7px',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}>
+                  Login
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px'
+              }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '7px', color: '#374151' }}>
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '7px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '7px', color: '#374151' }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '7px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '7px', color: '#374151' }}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Create a password"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '7px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <button type="submit" style={{
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  padding: '13px',
+                  borderRadius: '7px',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}>
+                  Register
+                </button>
+              </form>
+            )}
+
+            <p style={{
+              textAlign: 'center',
+              marginTop: '22px',
+              color: '#6b7280',
+              fontSize: '14px'
+            }}>
+              {isRegistering ? 'Already have an account?' : "Don't have an account?"}
+              <button
+                type="button"
+                onClick={() => setIsRegistering(!isRegistering)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  color: '#059669',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  marginLeft: '5px'
+                }}
+              >
+                {isRegistering ? 'Login here' : 'Register here'}
+              </button>
+            </p>
+          </section>
+        </main>
+
+        {/* FOOTER */}
+        <footer style={{
+          backgroundColor: '#064e3b',
+          color: '#d1fae5',
+          padding: '18px 6%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <p style={{ margin: 0 }}>
+            © {new Date().getFullYear()} 🌱 GreenCart. All rights reserved.
+          </p>
+          <p style={{ margin: 0 }}>
+            Developed and designed by <strong>Liji T.S</strong>
+          </p>
+        </footer>
       </div>
     );
   }
+
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f9fafb', minHeight: '100vh', paddingBottom: '40px' }}>
